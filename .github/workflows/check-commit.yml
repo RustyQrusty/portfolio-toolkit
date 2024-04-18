@@ -1,0 +1,44 @@
+name: Check commit
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+jobs:
+  check_job:
+    name: Check commit compliance and compiling
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ github.event.repository.name }}
+    steps:
+      - name: Clone repository
+        run: git clone "https://github.com/${{ github.repository }}.git"
+        working-directory: .
+
+      - name: Fetch all history for all tags and branches
+        run: |
+          git remote set-url origin "https://github.com/${{ github.repository }}.git"
+          git fetch --all
+
+      - name: Checkout PR branch
+        run: |
+          git checkout ${{ github.head_ref }}
+          git pull origin ${{ github.head_ref }}
+
+      - name: Install Cocogitto
+        run: |
+          CUR_DIR=$(pwd)
+          VERSION=5.6.0
+          TAR="cocogitto-$VERSION-x86_64-unknown-linux-musl.tar.gz"
+          BIN_DIR="$HOME/.local/bin"
+          mkdir -p "$BIN_DIR"
+          cd "$BIN_DIR" || exit
+          curl -OL https://github.com/cocogitto/cocogitto/releases/download/"$VERSION"/"$TAR"
+          tar xfz $TAR
+          cd "$CUR_DIR" || exit
+
+      - name: Conventional commit check
+        run: cog check

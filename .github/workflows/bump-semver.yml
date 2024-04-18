@@ -1,0 +1,58 @@
+name: Bump semver
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  bump_job:
+    if: ${{ github.event.pull_request.merged }}
+    name: Performing semver bump
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ github.event.repository.name }}
+    steps:
+      - name: Clone repository
+        run: git clone "https://github.com/${{ github.repository }}.git"
+        working-directory: .
+
+      - name: Fetch all history for all tags and branches
+        run: |
+          git remote set-url origin "https://RustyQrusty:${{ secrets.PUSH_TOKEN }}@github.com/${{ github.repository }}.git"
+          git fetch --all
+
+      - name: Checkout PR branch
+        run: |
+          git checkout main
+          git pull origin main
+
+      - name: Install Cocogitto
+        run: |
+          CUR_DIR=$(pwd)
+          VERSION=5.6.0
+          TAR="cocogitto-$VERSION-x86_64-unknown-linux-musl.tar.gz"
+          BIN_DIR="$HOME/.local/bin"
+          mkdir -p "$BIN_DIR"
+          cd "$BIN_DIR" || exit
+          curl -OL https://github.com/cocogitto/cocogitto/releases/download/"$VERSION"/"$TAR"
+          tar xfz $TAR
+          cd "$CUR_DIR" || exit
+
+      - name: Set up git config
+        run: |
+          git config user.email 51650675+RustyQrusty@users.noreply.github.com
+          git config user.name RustyQrusty
+          git config --global user.email 51650675+RustyQrusty@users.noreply.github.com
+          git config --global user.name RustyQrusty
+
+      - name: Bump cog version and create changelog
+        run: cog bump --auto
+
+      - name: Push and create tag
+        run: |
+          COG_VERSION=$(cog get-version)
+          git push origin main --force
+          git push origin $COG_VERSION --force
